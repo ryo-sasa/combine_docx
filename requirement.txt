@@ -1,0 +1,4 @@
+docxcompose
+docx
+pandas
+tqdm
