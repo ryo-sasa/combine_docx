@@ -3,7 +3,6 @@ import datetime
 import glob
 import traceback
 import os
-
 import pandas as pd
 from tqdm import tqdm
 from docxcompose.composer import Composer
@@ -34,6 +33,8 @@ def get_absolute_path(relative_path):
     return os.path.abspath(os.path.join(ROOT_DIR, relative_path))
 
 def main(args):
+    print(f"使用するExcelファイル: {args.data}")
+    
     # エクセルファイルの存在確認
     if not os.path.isfile(args.data):
         print(f"エクセルファイルが存在しません: {args.data}")
@@ -45,24 +46,29 @@ def main(args):
 
     # エクセルファイルを読み込み
     df = pd.read_excel(args.data, dtype=str)
-    df = df.fillna('')
+    df = df.fillna('')  # 欠損値を空文字に置換
+    print(f"読み込んだExcelデータ:\n{df.head()}")
 
     # 各ファイルを結合
     for data in tqdm(df.values, desc='結合中...', total=len(df.values)):
-        output_path = os.path.join(args.output_dir, "docx", data[0])
-        inputs_path = [os.path.abspath(os.path.join(args.input_dir, "docx", path)) for path in data[1:]]
+        output_path = os.path.join(args.output_dir, "docx", f"{data[0]}.docx")  # ファイル名に拡張子を追加
+        inputs_path = [os.path.abspath(os.path.join(args.input_dir, "docx", path)) for path in data[1:] if path]  # 空のセルは除外
+
+        print(f"出力先パス: {output_path}")
+        for path in inputs_path:
+            print(f"確認中のパス: {path}, 存在するか: {os.path.isfile(path)}")
 
         # ファイルの存在確認
         not_exist = [path for path in inputs_path if not os.path.isfile(path)]
         if not_exist:
             missing_files = ", ".join(not_exist)
             write_log(args.output_dir, f"{data[0]} エラー：指定されたファイルが存在しない ({missing_files})")
+            print(f"指定されたファイルが存在しません: {missing_files}")
             continue
 
         try:
             # DOCXファイルを結合
             master = Document(inputs_path[0])
-            master.add_page_break()
             composer = Composer(master)
             for path in inputs_path[1:]:
                 doc = Document(path)
@@ -73,9 +79,11 @@ def main(args):
             error_message = f"エラー: {str(e)}"
             write_log(args.output_dir, f"{data[0]} エラー：結合失敗 ({error_message})")
             write_error_log(traceback.format_exc())
+            print(f"結合失敗: {error_message}")
             continue
 
-        write_log(args.output_dir, f"{data[0]}  結合成功")
+        write_log(args.output_dir, f"{data[0]} 結合成功")
+        print(f"{data[0]} 結合成功")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MS Word ドキュメントの結合")
@@ -85,10 +93,13 @@ if __name__ == "__main__":
     launch = True
 
     try:
-        parser.add_argument('-d', '--data', default=DATA[0], help="インポートするエクセルファイルを指定")
-    except Exception:
+        if len(DATA) > 0:
+            parser.add_argument('-d', '--data', default=DATA[0], help="インポートするエクセルファイルを指定")
+        else:
+            raise FileNotFoundError("inputディレクトリにエクセルファイルが見つかりません。")
+    except Exception as e:
         write_error_log(traceback.format_exc())
-        print('エラー: inputディレクトリにエクセルファイルが見つかりません。')
+        print(f'エラー: {str(e)}')
         input('Enterを押すと終了します。')
         launch = False
 
