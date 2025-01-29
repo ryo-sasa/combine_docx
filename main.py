@@ -68,13 +68,20 @@ def main(args):
 
         try:
             # DOCXファイルを結合
-            master = Document(inputs_path[0])
+            print(f"開始: {data[0]} の結合処理")
+            master = Document(inputs_path[0])  # 最初のドキュメント
             composer = Composer(master)
-            for path in inputs_path[1:]:
+            master.add_page_break() # **ここで明確に改ページを追加**
+
+            for path in inputs_path[1:]:  # 2つ目以降のファイルを結合
                 doc = Document(path)
-                composer.append(doc)
-                master.add_page_break()
+                composer.append(doc)  # ドキュメント追加
+                master.add_page_break()  # **ここで明確に改ページを追加**
+
+            # 保存処理
             composer.save(output_path)
+            print(f"保存完了: {output_path}")
+
         except Exception as e:
             error_message = f"エラー: {str(e)}"
             write_log(args.output_dir, f"{data[0]} エラー：結合失敗 ({error_message})")
