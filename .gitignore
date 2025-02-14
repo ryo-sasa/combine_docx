@@ -2,3 +2,4 @@ input/
 output/
 *.zip
 myenv/
+.DS_Store
